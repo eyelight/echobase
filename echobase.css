@@ -72,6 +72,14 @@ header {
     border-bottom:1px solid black;
 }
 
+header.disconnected {
+    border-bottom:1px solid red;
+}
+
+header.connected {
+    border-bottom:1px solid green;
+}
+
 header h1 {
     display:block;
     text-align: center;
