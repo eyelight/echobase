@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="echobase.css">
+        <script src="paho.javascript-1.0.3/paho-mqtt.js" type="text/javascript"></script>
+        <script src="mqtt.js" type="text/javascript"></script>
+        <title>EchoBase</title>
+    </head>
+    <body id="Body" onkeypress="showChar(event)">
+        <img id="logo" class="logo-solounset" ondblclick="toggleVerboseLogging()" src="Rebel_Alliance_logo.svg.png" />
+        <header>
+            <h1 id="TopHeader">EchoBase</h1>
+            <div id="TopPicker" name="TopPicker" class="TopPicker TopPickerLeft">
+                <select id="SoloUnit" name="SoloUnit" onchange="onSoloUnitChange()">
+                    <option value=0>--</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                    <option value="20">20</option>
+                </select> <!-- "SoloUnit" -->
+                <label for="SoloUnit"><strong>Solo Unit</strong></label>
+                <button id="AvastBtn" onclick="handleAvast()">AVAST</button>
+                <button id="MuteBtn" onclick="handleMute()">MUTE</button>
+            </div> <!-- "TopPicker" -->
+
+            <div id="WitnessCam" name="WitnessCam" class="TopPicker TopPickerRight">
+                <select id="WitnessCamID" name="WitnessCamID" onchange="onWitnessCamChange()">
+                    <option>0</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                    <option>7</option>
+                </select> <!-- "WitnessCamID" -->
+                <label for="WitnessCamID" id="WitnessCamLabel"><strong>&#8738; <a href="#" id="WitnessCamLabelLink" class="unripe" target="_blank" rel="noopener noreferrer">POM Cam</a></strong></label>
+            </div> <!-- WitnessCam -->
+
+        </header>
+
+        <div id="Wheelbase" name="Wheelbase" class="ctlContainer">
+            <div id="WBContainer" class="subCtl headerBar">
+                <select id="WheelbaseID" name="WheelbaseID">
+                    <option>0</option>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>4</option>
+                    <option>5</option>
+                    <option>6</option>
+                    <option>7</option>
+                </select> <!-- "WheelbaseID" -->
+                <label for="WheelbaseID">Wheelbase ID</label>
+
+                <select id="TwistRate" onchange="onTwistRateChange()">
+                    <option>1</option>
+                    <option>5</option>
+                    <option>10</option>
+                    <option>15</option>
+                    <option>20</option>
+                    <option>25</option>
+                    <option>30</option>
+                    <option>35</option>
+                    <option>40</option>
+                    <option>45</option>
+                    <option>90</option>
+                    <option>180</option>
+                </select>
+                <label for="TwistRate">TwistRate (°)</label>
+
+                <select id="SlideRate" onchange="onSlideRateChange()">
+                    <option>1</option>
+                    <option>3</option>
+                    <option>6</option>
+                    <option>9</option>
+                    <option>12</option>
+                    <option>18</option>
+                    <option>24</option>
+                </select>
+                <label for="SlideRate">SlideRate (")</label>
+            </div>
+            <div class="Center">
+                <div id="WBContainerB" class="subCtl">
+                    <button id="btn-wb-fw-lt" onclick="handleWBFwLeft()">&#10531; Fw-Lt <br /> 7</button>
+                    <button id="btn-wb-fw" onclick="handleWBForward()">&uArr; Forward <br /> 8</button>
+                    <button id="btn-wb-fw-rt" onclick="handleWBFwRight()">&#10532; Fw-Rt <br /> 9</button>
+                    <button id="btn-wb-ccw" onclick="handleWBTwistLeft()">&#8634; Counter <br /> -</button>
+                </div>
+                <div id="WBContainerC" class="subCtl">
+                    <button id="btn-wb-lt" onclick="handleWBLeft()">&loarr; Left <br /> 4</button>
+                    <button id="btn-wb-stop" onclick="handleWBStop()" ondblclick="avast()">*STOP* <br /> 5</button>
+                    <button id="btn-wb-rt" onclick="handleWBRight()">&roarr; Right <br /> 6</button>
+                    <button id="btn-wb-cw" onclick="handleWBTwistRight()">&#8635; Clock <br /> +</button>
+                </div>
+                <div id="WBContainerD" class="subCtl">
+                    <button id="btn-wb-bk-lt" onclick="handleWBBkLeft()">&#10534; Bk-Lt <br /> 1</button>
+                    <button id="btn-wb-bk" onclick="handleWBBack()" ondblclick="handleWheelbaseBackDouble()">&dArr; Back <br /> 2</button>
+                    <button id="btn-wb-bk-rt" onclick="handleWBBkRight()">&#10533; Bk-Rt <br /> 3</button>
+                </div>
+            </div>
+        </div> <!-- Wheelbase -->
+
+        <div id="LiftControl" name="LiftControl" class="ctlContainer">
+            <div id="LCContainer" class="subCtl headerBar">
+                <select id="LiftCtlPicker" name="LiftCtlPicker" class="">
+                    <option>Relative</option>
+                    <option>Absolute</option>
+                </select>
+                <label for="LiftCtlPicker">Lift</label>
+            </div>
+            <div class="Center">
+                <button id="btn-lift-up" onclick="handleLiftUp()">&#10595; Up</button>
+                <button id="btn-lift-stop" onclick="handleLiftStop()">Stop</button>
+                <button id="btn-lift-down" onclick="handleLiftDown()">&#10597; Down</button>
+            </div>
+        </div> <!-- LiftControl -->
+    </body>
+</html>
