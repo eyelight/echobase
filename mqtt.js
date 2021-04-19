@@ -27,7 +27,7 @@ function onConnectionLost(responseObject) {
 }
 
 const publish = (topic, msg) => { // takes topic and message string
-    spit("desint :", topic, 'msggg', msg)
+    console.log("desint :", topic, 'msggg', msg)
     let message = new Paho.MQTT.Message(msg);
     message.destinationName = topic;
     client.send(message);
