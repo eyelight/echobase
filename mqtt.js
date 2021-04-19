@@ -1,4 +1,6 @@
-const client = new Paho.MQTT.Client("192.168.1.140", 8881, "/mqtt", "jason" + new Date().getTime());
+let myself = "Jason"
+
+const client = new Paho.MQTT.Client("192.168.1.140", 8881, "/mqtt", myself + new Date().getTime());
 
 myTopic = "mqtt/solo-wheelbase"
 
@@ -10,16 +12,20 @@ client.connect({ onSuccess: onConnect })
 let count = 0
 
 function onConnect() {
-    spit("onConnect")
+    spit("onConnect");
+    setTimeout(() => {
+        showConnected();
+    }, 1500);
     console.log("Subscribing to: " + myTopic)
     client.subscribe(myTopic) // subscribe to our topic
     setInterval(()=> {
         publish(myTopic, `The count is now ${count++}`)
-    }, 5000) // publish every 5s
+    }, 10000) // publish every 5s
     initializeValues();
 }
 
 function onConnectionLost(responseObject) {
+    showDisconnected();
     if (responseObject.errorCode !== 0) {
         console.log("onConnectionLost:" + responseObject.errorMessage);
     }
@@ -27,7 +33,7 @@ function onConnectionLost(responseObject) {
 }
 
 const publish = (topic, msg) => { // takes topic and message string
-    console.log("desint :", topic, 'msggg', msg)
+    console.log("Publishing to:", topic, 'Msg:', msg)
     let message = new Paho.MQTT.Message(msg);
     message.destinationName = topic;
     client.send(message);
@@ -99,6 +105,20 @@ function initializeValues() {
     onTwistRateChange();
     onSlideRateChange();
     return;
+}
+
+function showConnected() {
+    let b = document.getElementById("Header");
+    //document.querySelector("body").classList.add("avast");
+    b.classList.remove("disconnected");
+    b.classList.add("connected");
+}
+
+function showDisconnected() {
+    let b = document.getElementById("Header");
+    //document.querySelector("body").classList.add("avast");
+    b.classList.remove("connected");
+    b.classList.add("disconnected");
 }
 
 function buildTopic(t) {
@@ -239,7 +259,7 @@ function onSoloUnitChange() {
     
     // set new solo unit
     setSoloUnitID(document.getElementById("SoloUnit").selectedIndex);
-    spit("Solo Unit Changed to " + getSoloUnitID);
+    spit("Solo Unit Changed to " + getSoloUnitID());
     // subscribe to the new channel
     let newTopic = buildTopic("unit");
     addListenerTopic(newTopic);
@@ -365,7 +385,7 @@ window.addEventListener("keydown", function (event) {
             break;
         case "2":
             console.log("2 event (WB Back)")
-            dddck();
+            handleWBBack();
             break;
         case "1":
             console.log("1 event (WB Back/Left");
@@ -415,29 +435,71 @@ function spit(message) {
     console.log(message);
 }
 
+// These consts are the actual strings to be sent over mqtt to which
+// the robot firmware will acknowledge & obey
+const mqttCommandWBStop = "STOP";
+const mqttCommandWBMove = "MOVE";
+const mqttCommandWBReport = "REPORT";
+const mqttCommandWBAvast = "AVAST";
+const mqttCommandWBDirectionLeft = "left";
+const mqttCommandWBDirectionRight = "right";
+const mqttCommandWBDirectionForward = "forward";
+const mqttCommandWBDirectionBack = "back";
+const mqttCommandWBDirectionBackLeft = "";
+
+// Wheelbase diagnostic handler
+function handleWBReport() {
+    // ask the device to report details about itself
+    spit("Requesting Wheelbase Report");
+    setSoloMessageTopic("wheelbase");
+    setSoloMessageCommand(mqttCommandWBReport);
+    publish(soloMessage.topic, JSON.stringify(soloMessage));
+    return;
+}
+
 // Wheelbase Nav Handlers
 function handleWBStop() {
     spit("Wheelbase STOP")
     disableButton("btn-wb-stop");
+    //setSoloMessageTopic("wheelbase");
+    overrideSoloMessageTopic("mqtt/solo/2");
+    setSoloMessageCommand(mqttCommandWBStop);
+    showSoloMessage();
+    publish(soloMessage.topic, JSON.stringify(soloMessage));
     setTimeout(() => {
         enableButton("btn-wb-stop");
     }, 500);
     return;
 }
 function handleWBTwistLeft() {
-    spit("Wheelbase Twist Left (" + twistRate + " degrees)")
-    disableButton("btn-wb-ccw");
-    setTimeout(() => {
-        enableButton("btn-wb-ccw");
-    }, 3000);
+    if(!avast) {
+        if(!mute) {
+            spit("Wheelbase Twist Left (" + twistRate + " degrees)");
+            disableButton("btn-wb-ccw");
+            setSoloMessageTopic("wheelbase");
+            setSoloMessageCommand(mqttCommandWBMove);
+            setSoloMessageWBMethod("twist");
+            setSoloMessageWBRate(twistRate);
+            setSoloMessageWBDirection(mqttCommandWBDirectionLeft);
+            showSoloMessage();
+            publish(soloMessage.topic, JSON.stringify(soloMessage));
+            setTimeout(() => {
+                enableButton("btn-wb-ccw");
+            }, 3000);
+        }
+    }
     return;
 }
 function handleWBTwistRight() {
-    spit("Wheelbase Twist Right (" + twistRate + " degrees)")
-    disableButton("btn-wb-cw");
-    setTimeout(() => {
-        enableButton("btn-wb-cw");
-    }, 3000);
+    if(!avast) {
+        if(!mute) {
+            spit("Wheelbase Twist Right (" + twistRate + " degrees)");
+            disableButton("btn-wb-cw");
+            setTimeout(() => {
+                enableButton("btn-wb-cw");
+            }, 3000);
+        }
+    }
     return;
 }
 function handleWBForward() {
@@ -448,7 +510,7 @@ function handleWBForward() {
     }, 3000);
     return;
 }
-function dddck() {
+function handleWBBack() {
     spit("Wheelbase BACK (" + slideRate + " inches)")
     disableButton("btn-wb-bk");
     setTimeout(() => {
@@ -529,3 +591,10 @@ function handleLiftDown() {
         enableButton("btn-lift-down");
     }, 4500);
 }
+
+// TODO: add interface in some kind of advanced tab where someoen can try to free a robot by spinning one wheel at a time
+function spinWheel(wheelNum, direction) {
+    // to be able to get out of a jam where one of the wheels needs to spin one way or the other
+    return;
+}
+
