@@ -5,11 +5,12 @@
         <link rel="stylesheet" href="echobase.css">
         <script src="paho.javascript-1.0.3/paho-mqtt.js" type="text/javascript"></script>
         <script src="mqtt.js" type="text/javascript"></script>
+        <script src="echobase.js" type="text/javascript"></script>
         <title>EchoBase</title>
     </head>
     <body id="Body" onkeypress="showChar(event)">
         <img id="logo" class="logo-solounset" ondblclick="toggleVerboseLogging()" src="Rebel_Alliance_logo.svg.png" />
-        <header>
+        <header id="Header">
             <h1 id="TopHeader">EchoBase</h1>
             <div id="TopPicker" name="TopPicker" class="TopPicker TopPickerLeft">
                 <select id="SoloUnit" name="SoloUnit" onchange="onSoloUnitChange()">
@@ -114,6 +115,7 @@
                     <button id="btn-wb-bk-lt" onclick="handleWBBkLeft()">&#10534; Bk-Lt <br /> 1</button>
                     <button id="btn-wb-bk" onclick="handleWBBack()" ondblclick="handleWheelbaseBackDouble()">&dArr; Back <br /> 2</button>
                     <button id="btn-wb-bk-rt" onclick="handleWBBkRight()">&#10533; Bk-Rt <br /> 3</button>
+                    <button id="btn-wb-report" onclick="handleWBReport()">Report<br /> =</button>
                 </div>
             </div>
         </div> <!-- Wheelbase -->
