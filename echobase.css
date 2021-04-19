@@ -1,0 +1,169 @@
+body {
+    background-color:#404040;
+    background-size:cover;
+    padding-left:15px;
+    padding-right:15px;
+    padding-top: 5px;
+    max-width:3840px;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+#logo {
+    width: 80px;
+    margin-left:auto;
+    margin-right:auto;
+    display:block;
+}
+
+.logo-solounset {
+    margin-bottom:-40px;
+}
+.logo-soloset {
+    margin-bottom:-80px;
+}
+
+.avast {
+    outline-style: solid;
+    outline-width: 10px;
+    outline-color: red;
+    background:rgb(255,0,0,0.5);
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size:cover;
+    background-size: cover;
+    height:260px;
+    display:block;
+}
+
+.transbox {
+    background: rgba(102, 219, 255, 0.5);
+    border: 2px solid rgb(255,255,255);
+    margin: 50px;
+}
+
+.mutebox {
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size:cover;
+    background-size: cover;
+    width: 620px;
+    height:280px;
+    background-image: url(vader.jpg);
+    opacity: 0.8;
+    position: fixed;
+    position: -webkit-sticky;
+    top: 80px;
+    left: 250px;
+    padding-right: 100px;
+    padding-left: 150px;
+}
+
+.mutebox p {
+
+    text-align: center;
+    font-weight: bold;
+    color: black;
+}
+
+header {
+    margin-bottom:20px;
+    border-bottom:1px solid black;
+}
+
+header h1 {
+    display:block;
+    text-align: center;
+}
+
+.Left {
+    float:left;
+}
+
+.Right {
+    float:right;
+}
+
+.Center {
+    margin-left:auto;
+    margin-right:auto;
+}
+
+#TopHeader {
+    color:honeydew;
+}
+
+#TopHeader>label {
+    font-size: 40%;
+    padding:5px;
+}
+
+.TopPicker {
+    background-color: #777777;
+    padding:5px;
+    width:300px;
+    margin-top:-100px;
+}
+
+.TopPickerLeft {
+    float: left;
+}
+
+.TopPickerRight {
+    float: right;
+}
+
+#TopPicker label {
+    padding: 5px;
+}
+
+.headerBar {
+    background-color:gray;
+}
+
+.ctlContainer {
+    float: left;
+    margin-right:15px;
+    margin-top:10px;
+    max-width:600px;
+    background-color:#aaaaaa;
+
+}
+
+.ctlContainer label {
+    text-align: center;
+    padding:5px;
+}
+
+.ctlContainer button {
+    float: left;
+    margin: 5px;
+    width: 100px;
+    height: 50px;
+}
+
+.subCtl {
+    padding: 5px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.unripe {
+    text-decoration: brown;
+}
+
+.unripe :visited {
+    text-decoration: brown;
+    color: brown;
+    
+}
+
+a.ripe {
+    text-decoration: forestgreen;
+
+}
+
+a.ripe :visited {
+    text-decoration: forestgreen;
+}
