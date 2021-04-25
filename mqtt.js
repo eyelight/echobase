@@ -20,7 +20,7 @@ function onConnect() {
     client.subscribe(myTopic) // subscribe to our topic
     setInterval(()=> {
         publish(myTopic, `The count is now ${count++}`)
-    }, 10000) // publish every 5s
+    }, 30000) // publish every 5s
     initializeValues();
 }
 
@@ -33,7 +33,9 @@ function onConnectionLost(responseObject) {
 }
 
 const publish = (topic, msg) => { // takes topic and message string
-    console.log("Publishing to:", topic, 'Msg:', msg)
+    if (verboseLogging) {
+        console.log("Publishing to:", topic, 'Msg:', msg)
+    }
     let message = new Paho.MQTT.Message(msg);
     message.destinationName = topic;
     client.send(message);
@@ -69,6 +71,7 @@ function addListenerTopic(topic) {
 //        2a. this is different than using the CapsLock key (or the button) to "Mute" yourself from giving commands. But during an avast condition, no commands are heeded by the device firmware and all motors are stopped.
 //
 
+let echoBaseUser = "";
 let verboseLogging = true;
 let soloUnit = 0;
 let topicPrefix = "mqtt/solo/";
@@ -105,6 +108,14 @@ function initializeValues() {
     onTwistRateChange();
     onSlideRateChange();
     return;
+}
+
+function setEchoBaseUser(u) {
+    echoBaseUser = u;
+}
+
+function getEchoBaseUser() {
+    return echoBaseUser;
 }
 
 function showConnected() {
@@ -263,7 +274,6 @@ function onSoloUnitChange() {
     // subscribe to the new channel
     let newTopic = buildTopic("unit");
     addListenerTopic(newTopic);
-    
 }
 
 function getWitnessCam() {
@@ -441,11 +451,20 @@ const mqttCommandWBStop = "STOP";
 const mqttCommandWBMove = "MOVE";
 const mqttCommandWBReport = "REPORT";
 const mqttCommandWBAvast = "AVAST";
+const mqttCommandWBDirectionClockwise = "clockwise";
+const mqttCommandWBDirectionCounterClock = "counterclock";
 const mqttCommandWBDirectionLeft = "left";
 const mqttCommandWBDirectionRight = "right";
 const mqttCommandWBDirectionForward = "forward";
 const mqttCommandWBDirectionBack = "back";
-const mqttCommandWBDirectionBackLeft = "";
+const mqttCommandWBDirectionBackLeft = "dBackLeft";
+const mqttCommandWBDirectionBackRight = "dBackRight";
+const mqttCommandWBDirectionForwardLeft = "dForwardLeft";
+const mqttCommandWBDirectionForwardRight = "dForwardRight";
+const mqttCommandWBMethodSlide = "slide";
+const mqttCommandWBMethodTwist = "twist";
+const mqttTopicWheelbase = "wheelbase";
+const mqttTopicLift = "lift";
 
 // Wheelbase diagnostic handler
 function handleWBReport() {
@@ -474,122 +493,219 @@ function handleWBStop() {
 function handleWBTwistLeft() {
     if(!avast) {
         if(!mute) {
-            spit("Wheelbase Twist Left (" + twistRate + " degrees)");
             disableButton("btn-wb-ccw");
-            setSoloMessageTopic("wheelbase");
-            setSoloMessageCommand(mqttCommandWBMove);
-            setSoloMessageWBMethod("twist");
-            setSoloMessageWBRate(twistRate);
-            setSoloMessageWBDirection(mqttCommandWBDirectionLeft);
-            showSoloMessage();
-            publish(soloMessage.topic, JSON.stringify(soloMessage));
-            setTimeout(() => {
-                enableButton("btn-wb-ccw");
-            }, 3000);
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodTwist, twistRate, mqttCommandWBDirectionCounterClock, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-ccw", 3000);
+            return;
         }
+        muteMessage();
+        return;
     }
+    avastMessage();
     return;
 }
 function handleWBTwistRight() {
     if(!avast) {
         if(!mute) {
-            spit("Wheelbase Twist Right (" + twistRate + " degrees)");
             disableButton("btn-wb-cw");
-            setTimeout(() => {
-                enableButton("btn-wb-cw");
-            }, 3000);
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodTwist, twistRate, mqttCommandWBDirectionClockwise, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-cw", 3000);
+            return;
         }
+        muteMessage();
+        return;
     }
+    avastMessage();
     return;
 }
 function handleWBForward() {
-    spit("Wheelbase FORWARD (" + slideRate + " inches)");
-    disableButton("btn-wb-fw");
-    setTimeout(() => {
-        enableButton("btn-wb-fw");
-    }, 3000);
+    if (!avast) {
+        if (!mute) {
+            disableButton("btn-wb-fw");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForward, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-fw", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBBack() {
-    spit("Wheelbase BACK (" + slideRate + " inches)")
-    disableButton("btn-wb-bk");
-    setTimeout(() => {
-        enableButton("btn-wb-bk");
-    }, 3000);
+    if (!avast) {
+        if (!mute) {
+            // disable the button to prevent too many instructions
+            disableButton("btn-wb-bk");
+
+            // create a new message
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBack, mqttCommandWBMove);
+
+            // log the intention locally
+            cmd.spit();
+
+            // send the message to the MQTT broker using the MQTT client
+            cmd.send();
+
+            // TODO: re-enable button on response message instead of timer
+            autoEnableButton("btn-wb-bk", 3000); // replace w/ event triggered by reply message
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBLeft() {
-    spit("Wheelbase LEFT (" + slideRate + " inches)")
-    disableButton("btn-wb-lt");
-    setTimeout(() => {
-        enableButton("btn-wb-lt");
-    }, 3000);
+    if(!avast) {
+        if (!mute) {
+            // disable the button to prevent too many instructions
+            disableButton("btn-wb-lt");
+            // create new message
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionLeft, mqttCommandWBMove);
+            //log the intention locally
+            cmd.spit();
+            // send the message to the MQTT broker using Paho
+            cmd.send();
+            autoEnableButton("btn-wb-lt", 3000); // replace w/ event triggered by reply message
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBRight() {
-    spit("Wheelbase RIGHT (" + slideRate + " inches)")
-    disableButton("btn-wb-rt");
-    setTimeout(() => {
-        enableButton("btn-wb-rt");
-    }, 3000);
+    if(!avast) {
+        if(!mute) {
+            disableButton("btn-wb-rt");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionRight, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-rt", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBFwLeft() {
-    spit("Wheelbase FW/LEFT (" + slideRate + " inches)")
-    disableButton("btn-wb-fw-lt");
-    setTimeout(() => {
-        enableButton("btn-wb-fw-lt");
-    }, 3000);
+    if(!avast) {
+        if(!mute) {
+            disableButton("btn-wb-fw-lt");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForwardLeft, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-fw-lt", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBFwRight() {
-    spit("Wheelbase FW/RIGHT (" + slideRate + " inches)")
-    disableButton("btn-wb-fw-rt");
-    setTimeout(() => {
-        enableButton("btn-wb-fw-rt");
-    }, 3000);
+    if (!avast) {
+        if(!mute) {
+            disableButton("btn-wb-fw-rt");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForwardRight, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-fw-rt", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBBkLeft() {
-    spit("Wheelbase BK/LEFT (" + slideRate + " inches)")
-    disableButton("btn-wb-bk-lt");
-    setTimeout(() => {
-        enableButton("btn-wb-bk-lt");
-    }, 3000);
+    if (!avast) {
+        if(!mute) {
+            disableButton("btn-wb-bk-lt");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBackLeft, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-bk-lt", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBBkRight() {
-    spit("Wheelbase BK/RIGHT (" + slideRate + " inches)")
-    disableButton("btn-wb-bk-rt");
-    setTimeout(() => {
-        enableButton("btn-wb-bk-rt");
-    }, 3000);
+    if (!avast) {
+        if(!mute) {
+            disableButton("btn-wb-bk-rt");
+            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBackRight, mqttCommandWBMove);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-bk-rt", 3000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 
 // Lift Nav Handlers
 function handleLiftUp() {
-    spit("LIFT UP")
-    disableButton("btn-lift-up");
-    setTimeout(() => {
-        enableButton("btn-lift-up");
-    }, 4500);
+    if(!avast) {
+        if(!mute) {
+            spit("LIFT UP")
+            disableButton("btn-lift-up");
+            autoEnableButton("btn-lift-up", 4500);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleLiftStop() {
-    spit("LIFT STOP");
-    disableButton("btn-lift-stop");
-    setTimeout(() => {
-        enableButton("btn-lift-stop");
-    }, 500);
+    if(!avast) {
+        if(!mute) {
+            spit("LIFT STOP");
+            disableButton("btn-lift-stop");
+            autoEnableButton("btn-lift-stop", 500);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleLiftDown() {
-    spit("LIFT DOWN");
-    disableButton("btn-lift-down");
-    setTimeout(() => {
-        enableButton("btn-lift-down");
-    }, 4500);
+    if(!avast) {
+        if(!mute) {
+            spit("LIFT DOWN");
+            disableButton("btn-lift-down");
+            autoEnableButton("btn-lift-down", 4500);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
+    return;
 }
 
 // TODO: add interface in some kind of advanced tab where someoen can try to free a robot by spinning one wheel at a time
