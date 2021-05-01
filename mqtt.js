@@ -20,9 +20,9 @@ function onConnect() {
     }, 1500);
     console.log("Subscribing to: " + defaultTopic)
     client.subscribe(defaultTopic) // subscribe to our topic
-    setInterval(()=> {
+    /*setInterval(()=> {
         publish(defaultTopic, `The count is now ${count++}`)
-    }, 30000) // publish every 5s
+    }, 30000) // publish every 5s */
     initializeValues();
 }
 
@@ -198,18 +198,39 @@ function handleIncomingMQTT() {
 
 function handleAvast() {
     let b = document.getElementById("Body");
-    avast = true;
     spit("Avast: " + avast);
     //document.querySelector("body").classList.add("avast");
     b.classList.add("avast");
+    if(!avast) {
+        disableButton("AvastBtn");
+        const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), subs.getWBSender(), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionCounterClock, mqttCommandWBAvast);
+        cmd.spit();
+        cmd.send();
+        autoEnableButton("AvastBtn", 1000);
+        avast = true;
+        return;
+    }
+    handleResume();
+//    avastMessage();
+    return;
 }
 
 function handleResume() {
     let b = document.getElementById("Body");
-    avast = false;
     spit("Avast: " + avast);
     //document.querySelector("body").classList.remove("avast");
     b.classList.remove("avast");
+    if(avast) {
+        avast = false;
+        disableButton("AvastBtn");
+        const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), subs.getWBSender(), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionClockwise, mqttCommandWBResume);
+        cmd.spit();
+        cmd.send();
+        autoEnableButton("AvastBtn", 1000);
+        return;
+    }
+    avastMessage();
+    return;
 }
 
 function handleUnmute() {
@@ -521,16 +542,19 @@ function handleWBReport() {
 
 // Wheelbase Nav Handlers
 function handleWBStop() {
-    spit("Wheelbase STOP")
-    disableButton("btn-wb-stop");
-    //setSoloMessageTopic("wheelbase");
-    //overrideSoloMessageTopic("mqtt/solo/2");
-    setSoloMessageCommand(mqttCommandWBStop);
-    //showSoloMessage();
-    publish(soloMessage.topic, JSON.stringify(soloMessage));
-    setTimeout(() => {
-        enableButton("btn-wb-stop");
-    }, 500);
+    if(!avast) {
+        if(!mute) {
+            disableButton("btn-wb-stop");
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), subs.getWBSender(), mqttCommandWBMethodSlide, subs.getSlideRate(), subs.getPivot(), mqttCommandWBDirectionClockwise, mqttCommandWBStop);
+            cmd.spit();
+            cmd.send();
+            autoEnableButton("btn-wb-stop", 1000);
+            return;
+        }
+        muteMessage();
+        return;
+    }
+    avastMessage();
     return;
 }
 function handleWBTwistLeft() {
