@@ -1,8 +1,10 @@
-let myself = "Jason"
+let myself = "Jason";
 
 const client = new Paho.MQTT.Client("192.168.1.140", 8881, "/mqtt", myself + new Date().getTime());
 
-myTopic = "mqtt/solo-wheelbase"
+defaultTopic = "mqtt/solo-wheelbase"
+
+const subs = new SubState(myself); // this will hold our subscription state
 
 client.onConnectionLost = onConnectionLost;
 client.onMessageArrived = onMessageArrived;
@@ -16,10 +18,10 @@ function onConnect() {
     setTimeout(() => {
         showConnected();
     }, 1500);
-    console.log("Subscribing to: " + myTopic)
-    client.subscribe(myTopic) // subscribe to our topic
+    console.log("Subscribing to: " + defaultTopic)
+    client.subscribe(defaultTopic) // subscribe to our topic
     setInterval(()=> {
-        publish(myTopic, `The count is now ${count++}`)
+        publish(defaultTopic, `The count is now ${count++}`)
     }, 30000) // publish every 5s
     initializeValues();
 }
@@ -73,8 +75,6 @@ function addListenerTopic(topic) {
 
 let echoBaseUser = "";
 let verboseLogging = true;
-let soloUnit = 0;
-let topicPrefix = "mqtt/solo/";
 let wheelbaseTopicPrefix = "/wheelbase/";
 let unitTopic = "";
 let wheelbaseTopic = "";
@@ -105,17 +105,18 @@ function toggleVerboseLogging() {
 function initializeValues() {
     // take the initial values and insert them into the elements that have dropdowns
     onWitnessCamChange();
+    onWheelbaseChange();
     onTwistRateChange();
     onSlideRateChange();
     return;
 }
 
 function setEchoBaseUser(u) {
-    echoBaseUser = u;
+    subs.myself = u;
 }
 
 function getEchoBaseUser() {
-    return echoBaseUser;
+    return subs.myself;
 }
 
 function showConnected() {
@@ -132,17 +133,27 @@ function showDisconnected() {
     b.classList.add("disconnected");
 }
 
-function buildTopic(t) {
-    let str = topicPrefix+getSoloUnitID();
+function buildTopic(t, device) {
     switch (t) {
         case "unit":
-            return str;
-            break;
+            if (device == "") {
+                return subs.topicPrefix+subs.soloListener;
+            }
+            return subs.topicPrefix+device;
         case "wheelbase":
-            str += wheelbaseTopicPrefix + wheelbaseID;
-            return str;
-            break;
+            if (device == "") {
+                if (subs.wheelbaseListeners.length > 1) {
+                    spit("buildTopic() needs a device ID");
+                    return;
+                } else {
+                    return subs.topicPrefix+subs.soloListener+subs.wheelbaseTopicPrefix+subs.wheelbaseListeners[0];
+                }
+            }
+            return subs.topicPrefix+subs.soloListener+subs.wheelbaseTopicPrefix+device;
         case "lift":
+            if (device == "") {
+
+            }
             str += "/lift/" + liftID;
             return str;
             break;
@@ -150,6 +161,12 @@ function buildTopic(t) {
             str += "/witness/" + witnessID;
             return str;
             break;
+        case "dm":
+            str += "/" + myself;
+            return str;
+        case "chat":
+            str += "/crew";
+            return str;
         default:
             console.log("buildTopic() needs a context to be passed");
             return;
@@ -157,7 +174,7 @@ function buildTopic(t) {
 }
 
 function getSoloUnitID() {
-    return soloUnit;
+    return subs.soloUnit;
 }
 
 function setSoloUnitID(i) {
@@ -269,11 +286,13 @@ function onSoloUnitChange() {
     document.getElementById("logo").classList.add("logo-soloset");
     
     // set new solo unit
-    setSoloUnitID(document.getElementById("SoloUnit").selectedIndex);
-    spit("Solo Unit Changed to " + getSoloUnitID());
+    subs.setSoloUnitID(document.getElementById("SoloUnit").selectedIndex);
+    spit("Solo Unit Changed to " + subs.getSoloUnitID());
     // subscribe to the new channel
     let newTopic = buildTopic("unit");
-    addListenerTopic(newTopic);
+    //addListenerTopic(newTopic);
+    subs.changeSolo();
+    initializeValues();
 }
 
 function getWitnessCam() {
@@ -302,22 +321,26 @@ function onWitnessCamChange() {
         setWitnessLink("rtsp://localhost:" + w );
     }
 }
-function setSlideRate(r) {
-    slideRate = r;
-}
-function setTwistRate(r) {
-    twistRate = r;
-}
+
 function onTwistRateChange() {
     const v = document.getElementById("TwistRate").value;
-    setTwistRate(v);
-    spit("TwistRate: " + twistRate);
-
+    subs.setTwistRate(v);
+    spit("TwistRate: " + subs.getTwistRate());
 }
 function onSlideRateChange() {
     const v = document.getElementById("SlideRate").value;
-    setSlideRate(v);
-    spit("SlideRate: "+ slideRate);
+    subs.setSlideRate(v);
+    spit("SlideRate: "+ subs.getSlideRate());
+}
+
+function onWheelbaseChange() {
+    const v = document.getElementById("WheelbaseID").value;
+    subs.changeSender(mqttTopicWheelbase, v);
+    if (!subs.wheelbaseListeners.includes(v)) {
+        subs.wheelbaseListeners.push(v);
+        client.subscribe(subs.getTopic(mqttTopicWheelbase, v));
+    }
+    spit("Wheelbase: " + subs.addListener(mqttTopicWheelbase, v));
 }
 
 // Keyboard shortcuts
@@ -447,24 +470,44 @@ function spit(message) {
 
 // These consts are the actual strings to be sent over mqtt to which
 // the robot firmware will acknowledge & obey
-const mqttCommandWBStop = "STOP";
-const mqttCommandWBMove = "MOVE";
-const mqttCommandWBReport = "REPORT";
-const mqttCommandWBAvast = "AVAST";
-const mqttCommandWBDirectionClockwise = "clockwise";
-const mqttCommandWBDirectionCounterClock = "counterclock";
-const mqttCommandWBDirectionLeft = "left";
-const mqttCommandWBDirectionRight = "right";
-const mqttCommandWBDirectionForward = "forward";
-const mqttCommandWBDirectionBack = "back";
-const mqttCommandWBDirectionBackLeft = "dBackLeft";
-const mqttCommandWBDirectionBackRight = "dBackRight";
-const mqttCommandWBDirectionForwardLeft = "dForwardLeft";
-const mqttCommandWBDirectionForwardRight = "dForwardRight";
-const mqttCommandWBMethodSlide = "slide";
-const mqttCommandWBMethodTwist = "twist";
+const mqttMessageTypeCommand = "Command";
+const mqttMessageTypeChat = "Chat";
+const mqttMessageTypeDM = "DM";
+const mqttMessageTypeResponse = "Response";
+const mqttMessageTypeStatus = "Status";
+const mqttCommandWBStop = 0;
+const mqttCommandWBMove = 1;
+const mqttCommandWBAvast = 2;
+const mqttCommandWBReport = 3;
+const mqttCommandWBResume = 4;
+const mqttCommandWBDirectionClockwise = 10;
+const mqttCommandWBDirectionCounterClock = 0;
+const mqttCommandWBDirectionLeft = 4;
+const mqttCommandWBDirectionRight = 6;
+const mqttCommandWBDirectionForward = 8;
+const mqttCommandWBDirectionBack = 2;
+const mqttCommandWBDirectionBackLeft = 1;
+const mqttCommandWBDirectionBackRight = 3;
+const mqttCommandWBDirectionForwardLeft = 7;
+const mqttCommandWBDirectionForwardRight = 9;
+const mqttCommandWBPivotNoPivot = 0;
+const mqttCommandWBPivotPortStern = 1;
+const mqttCommandWBPivotStern = 2;
+const mqttCommandWBPivotStarboardStern = 3;
+const mqttCommandWBPivotPort = 4;
+const mqttCommandWBPivotMidship = 5;
+const mqttCommandWBPivotStarboard = 6;
+const mqttCommandWBPivotPortBow = 7;
+const mqttCommandWBPivotBow = 8;
+const mqttCommandWBPivotStarboardBow = 9;
+const mqttCommandWBMethodSlide = 0;
+const mqttCommandWBMethodTwist = 1;
 const mqttTopicWheelbase = "wheelbase";
 const mqttTopicLift = "lift";
+const mqttTopicWitness = "witness";
+const mqttTopicChat = "chat";
+const mqttTopicDMIncoming = "dm-in";
+const mqttTopicDMOutgoing = "dm-out";
 
 // Wheelbase diagnostic handler
 function handleWBReport() {
@@ -481,9 +524,9 @@ function handleWBStop() {
     spit("Wheelbase STOP")
     disableButton("btn-wb-stop");
     //setSoloMessageTopic("wheelbase");
-    overrideSoloMessageTopic("mqtt/solo/2");
+    //overrideSoloMessageTopic("mqtt/solo/2");
     setSoloMessageCommand(mqttCommandWBStop);
-    showSoloMessage();
+    //showSoloMessage();
     publish(soloMessage.topic, JSON.stringify(soloMessage));
     setTimeout(() => {
         enableButton("btn-wb-stop");
@@ -494,7 +537,7 @@ function handleWBTwistLeft() {
     if(!avast) {
         if(!mute) {
             disableButton("btn-wb-ccw");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodTwist, twistRate, mqttCommandWBDirectionCounterClock, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionCounterClock, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-ccw", 3000);
@@ -510,7 +553,7 @@ function handleWBTwistRight() {
     if(!avast) {
         if(!mute) {
             disableButton("btn-wb-cw");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodTwist, twistRate, mqttCommandWBDirectionClockwise, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionClockwise, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-cw", 3000);
@@ -526,7 +569,7 @@ function handleWBForward() {
     if (!avast) {
         if (!mute) {
             disableButton("btn-wb-fw");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForward, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionForward, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-fw", 3000);
@@ -545,7 +588,7 @@ function handleWBBack() {
             disableButton("btn-wb-bk");
 
             // create a new message
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBack, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionBack, mqttCommandWBMove);
 
             // log the intention locally
             cmd.spit();
@@ -569,7 +612,7 @@ function handleWBLeft() {
             // disable the button to prevent too many instructions
             disableButton("btn-wb-lt");
             // create new message
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionLeft, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionLeft, mqttCommandWBMove);
             //log the intention locally
             cmd.spit();
             // send the message to the MQTT broker using Paho
@@ -587,7 +630,7 @@ function handleWBRight() {
     if(!avast) {
         if(!mute) {
             disableButton("btn-wb-rt");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionRight, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionRight, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-rt", 3000);
@@ -603,7 +646,7 @@ function handleWBFwLeft() {
     if(!avast) {
         if(!mute) {
             disableButton("btn-wb-fw-lt");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForwardLeft, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionForwardLeft, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-fw-lt", 3000);
@@ -619,7 +662,7 @@ function handleWBFwRight() {
     if (!avast) {
         if(!mute) {
             disableButton("btn-wb-fw-rt");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionForwardRight, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionForwardRight, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-fw-rt", 3000);
@@ -635,7 +678,7 @@ function handleWBBkLeft() {
     if (!avast) {
         if(!mute) {
             disableButton("btn-wb-bk-lt");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBackLeft, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionBackLeft, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-bk-lt", 3000);
@@ -651,7 +694,7 @@ function handleWBBkRight() {
     if (!avast) {
         if(!mute) {
             disableButton("btn-wb-bk-rt");
-            const cmd = new WheelbaseMessage("Command", getEchoBaseUser(), getSoloUnitID(), buildTopic(mqttTopicWheelbase), mqttCommandWBMethodSlide, slideRate, mqttCommandWBDirectionBackRight, mqttCommandWBMove);
+            const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), mqttCommandWBMethodSlide, subs.getSlideRate(), mqttCommandWBDirectionBackRight, mqttCommandWBMove);
             cmd.spit();
             cmd.send();
             autoEnableButton("btn-wb-bk-rt", 3000);
