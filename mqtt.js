@@ -202,6 +202,8 @@ function handleAvast() {
     //document.querySelector("body").classList.add("avast");
     b.classList.add("avast");
     if(!avast) {
+        let avastButton = document.getElementById("AvastBtn");
+        avastButton.innerHTML = "RESUME";
         disableButton("AvastBtn");
         const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), subs.getWBSender(), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionCounterClock, mqttCommandWBAvast);
         cmd.spit();
@@ -221,6 +223,8 @@ function handleResume() {
     //document.querySelector("body").classList.remove("avast");
     b.classList.remove("avast");
     if(avast) {
+        let avastButton = document.getElementById("AvastBtn");
+        avastButton.innerHTML = "AVAST";
         avast = false;
         disableButton("AvastBtn");
         const cmd = new WheelbaseMessage(mqttMessageTypeCommand, getEchoBaseUser(), subs.getSoloUnitID(), subs.getTopic(mqttTopicWheelbase, subs.wheelbaseSender), subs.getWBSender(), mqttCommandWBMethodTwist, subs.getTwistRate(), subs.getPivot(), mqttCommandWBDirectionClockwise, mqttCommandWBResume);
