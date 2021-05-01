@@ -3,9 +3,9 @@
     <head>
         <meta charset="utf-8">
         <link rel="stylesheet" href="echobase.css">
+        <script src="echobase.js" type="text/javascript"></script>
         <script src="paho.javascript-1.0.3/paho-mqtt.js" type="text/javascript"></script>
         <script src="mqtt.js" type="text/javascript"></script>
-        <script src="echobase.js" type="text/javascript"></script>
         <title>EchoBase</title>
     </head>
     <body id="Body" onkeypress="showChar(event)">
@@ -59,7 +59,7 @@
 
         <div id="Wheelbase" name="Wheelbase" class="ctlContainer">
             <div id="WBContainer" class="subCtl headerBar">
-                <select id="WheelbaseID" name="WheelbaseID">
+                <select id="WheelbaseID" onchange="onWheelbaseChange()" name="WheelbaseID">
                     <option>0</option>
                     <option>1</option>
                     <option>2</option>
