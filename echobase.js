@@ -49,10 +49,10 @@ class SubState {
         }
     }
     setTwistRate(r) {
-        this.twistRate = r;
+        this.twistRate = Number(r);
     }
     setSlideRate(r) {
-        this.slideRate = r;
+        this.slideRate = Number(r);
     }
     getTwistRate() {
         return this.twistRate;
@@ -64,7 +64,13 @@ class SubState {
         return this.pivot;
     }
     setPivot(p) {
-        this.pivot = p;
+        this.pivot = Number(p);
+    }
+    getWBSender() {
+        return this.wheelbaseSender;
+    }
+    setWBSener(s) {
+        this.wheelbaseSender = Number(s);
     }
     getSoloUnitID() {
         return this.soloListener;
@@ -180,8 +186,9 @@ class SoloMessage {
 
 
 class WheelbaseMessage extends SoloMessage {
-    constructor(msgType, from, unit, topic, wbMethod, wbAmount, wbPivot = 5, wbDirection, command) {
+    constructor(msgType, from, unit, topic, wbUnit, wbMethod, wbAmount, wbPivot, wbDirection, command) {
         super(msgType, from, unit, topic);
+        this.wbUnit = wbUnit;
         this.wbMethod = wbMethod;
         this.wbAmount = wbAmount;
         this.wbPivot = wbPivot;
@@ -191,9 +198,10 @@ class WheelbaseMessage extends SoloMessage {
     spit() {
         spit("Type: " + this.msgType +
         " / MissionTime: " + this.missionTime +
+        " / Topic: " + this.topic + 
         " / From: " + this.from + 
         " / Unit: " + this.unit + 
-        " / Topic: " + this.topic + 
+        " / Wheelbase: " + this.wbUnit +
         " / Method: " + this.wbMethod +
         " / Amount: " + this.wbAmount +
         " / Pivot: " + this.wbPivot +
